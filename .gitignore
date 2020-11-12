@@ -2,4 +2,4 @@
 *.swp
 *.swo
 *.sqlite3
-*/migrations/*
+**/migrations/*
