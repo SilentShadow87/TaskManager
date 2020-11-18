@@ -1,6 +1,6 @@
 from django.shortcuts import render, get_object_or_404
 from rest_framework.views import APIView
-from rest_framework.generics import ListAPIView, CreateAPIView
+from rest_framework.generics import ListAPIView, CreateAPIView, UpdateAPIView
 from django.contrib.auth import get_user_model
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework import status
@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from django.utils.encoding import force_text
 from django.utils.http import urlsafe_base64_decode
 
-from .serializers import UserSerializer, ProfileSerializer
+from .serializers import UserSerializer, ProfileSerializer, ChangePasswordSerializer
 from .tokens import account_activation_token
 
 
@@ -48,3 +48,12 @@ class ActivateAccount(APIView):
             return Response('Account id verified.')
 
         return Response('The confirmation link was invalid, possibly because it has already been used.')
+
+
+class ChangePasswordView(UpdateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ChangePasswordSerializer
+
+    def get_object(self):
+        return self.request.user
+
