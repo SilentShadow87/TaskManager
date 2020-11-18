@@ -121,6 +121,13 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST_USER = 'fejsov87@gmail.com'
+EMAIL_HOST_PASSWORD = 'bdzimktdiumlwozy'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',

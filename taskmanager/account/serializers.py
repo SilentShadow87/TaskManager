@@ -1,7 +1,9 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from rest_framework.validators import UniqueValidator
+
 from .models import ProfileModel
+from .utils import send_confirmation_email
 
 
 # get default user model
@@ -16,11 +18,7 @@ class ProfileSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     profile = ProfileSerializer(read_only=True)
-    email = serializers.EmailField(required=True,
-                validators=[UniqueValidator(
-                    queryset=UserModel.objects.all(),
-                    message='Email address already in use.')
-                    ]
+    email = serializers.EmailField(required=True
                 )
 
     class Meta:
@@ -38,4 +36,6 @@ class UserSerializer(serializers.ModelSerializer):
         user.save()
 
         ProfileModel.objects.create(user=user)
+
+        send_confirmation_email(self.context['request'], user)
         return user
