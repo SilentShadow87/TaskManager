@@ -7,7 +7,7 @@ from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 
 from .models import ProfileModel
-from .utils import send_confirmation_email, send_password_reset_email, send_link_to_mail
+from .utils import send_one_time_token
 from .tokens import account_activation_token
 
 
@@ -138,7 +138,7 @@ class ResetPasswordEmailSerializer(serializers.Serializer):
         send_one_time_token(
                 self.context['request'],
                 user,
-                PasswordResetTokenGenerator().make_token(user)
+                PasswordResetTokenGenerator().make_token(user),
                 'account/password_reset_email.html',
                 'Password reset',
                 )

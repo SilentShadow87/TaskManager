@@ -30,7 +30,7 @@ class OneTimeTokenAuthentication(authentication.BaseAuthentication):
                 uidb64 = credentials['uidb64']
                 token = credentials['token']
 
-        elif request.method == 'PATCH':
+        elif request.method in ('POST', 'PATCH', 'PUT'):
             # get uidb64 and token from the request body
             uidb64 = request.data.get('uidb64')
             token = request.data.get('token')
@@ -40,7 +40,7 @@ class OneTimeTokenAuthentication(authentication.BaseAuthentication):
             uid = force_text(urlsafe_base64_decode(uidb64))
             user = User.objects.get(pk=uid)
 
-        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        except (AttributeError, TypeError, ValueError, OverflowError, User.DoesNotExist):
             pass
 
         # check if token is valid
