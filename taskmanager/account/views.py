@@ -1,59 +1,91 @@
 from django.shortcuts import render, get_object_or_404
-from rest_framework.views import APIView
-from rest_framework.generics import ListAPIView, CreateAPIView, UpdateAPIView
 from django.contrib.auth import get_user_model
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework import status
-from rest_framework.response import Response
 from django.utils.encoding import force_text
 from django.utils.http import urlsafe_base64_decode
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
 
-from .serializers import UserSerializer, ProfileSerializer, ChangePasswordSerializer
+from rest_framework import status
+from rest_framework.views import APIView
+from rest_framework.generics import ListAPIView, CreateAPIView, UpdateAPIView
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
+from rest_framework.response import Response
+
+from .serializers import UserSerializer, ProfileSerializer, ChangePasswordSerializer, ResetPasswordEmailSerializer
 from .tokens import account_activation_token
+from .utils import check_token
+from .authentication import ActivationTokenAuthentication, ResetPasswordTokenAuthentication
 
 
 # get default user model
 UserModel = get_user_model()
 
 class UserListView(ListAPIView):
-    """Retrieve user list."""
-    permission_classes = [IsAuthenticated]
+    """Retrieve user list. Only admins have permission to list users."""
+    permission_classes = [IsAdminUser]
     serializer_class = UserSerializer
     queryset = UserModel.objects.all()
 
 
 class UserCreateView(CreateAPIView):
-    """Reister new user."""
+    """Register new user."""
     permission_classes = [AllowAny]
     serializer_class = UserSerializer
     queryset = UserModel.objects.all()
 
 
 class ActivateAccount(APIView):
+    """Activate user account. User is determined based on activation token."""
+    authentication_classes = [ActivationTokenAuthentication]
     permission_classes = [AllowAny]
+
     def get(self, request, uidb64, token):
-        user = None
-        try:
-            uid = force_text(urlsafe_base64_decode(uidb64))
-            user = UserModel.objects.get(pk=uid) 
+        user = request.user
+        user.profile.is_verified = True
+        user.profile.save()
 
-        except (TypeError, ValueError, OverflowError, UserModel.DoesNotExist):
-            pass
-
-        if user is not None and account_activation_token.check_token(user,
-                token):
-            user.profile.is_verified = True
-            user.profile.save()
-
-            return Response('Account id verified.')
-
-        return Response('The confirmation link was invalid, possibly because it has already been used.')
+        return Response('Account id verified.')
 
 
 class ChangePasswordView(UpdateAPIView):
+    """Handle user attempt to change password."""
     permission_classes = [IsAuthenticated]
     serializer_class = ChangePasswordSerializer
 
     def get_object(self):
         return self.request.user
 
+
+class ResetPasswordView(APIView):
+    """Handle forgotten password. Send a link with a password reset token to the supplied email address."""
+    permission_classes = [AllowAny]
+
+    def post(self ,request):
+        serializer = ResetPasswordEmailSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+
+        return Response('We have emailed you instructions for setting your password. If you do not receive an email, '
+                        'please make sure you have entered the address you registered with.')
+
+
+class PasswordResetCheckTokenView(APIView):
+    """Check token used for reset user password."""
+    authentication_classes = [ResetPasswordTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, uidb64, token):
+        return Response({'uidb64': uidb64, 'token': token})
+
+
+class PasswordResetConfirmView(APIView):
+    """Handle user attempt to reset password."""
+    authentication_classes = [ResetPasswordTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request):
+        serializer = ChangePasswordSerializer(request.user, data=request.data, fields=('new_password1', 'new_password2'), context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'success': True})
+
+        return Response(serializer.errors)
